@@ -182,7 +182,6 @@ namespace Survivor
             for (int ri = 0; ri < removedEnemyIndices.Length; ri++)
             {
                 int enemyIndex = removedEnemyIndices[ri];
-                Debug.LogFormat("Removing enemy {0}", enemyIndex);
                 int count = 0;
                 for (int i = 0; i < gameData.AliveEnemyCount; i++)
                     if (gameData.AliveEnemyIndices[i] != enemyIndex)
