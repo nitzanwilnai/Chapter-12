@@ -22,4 +22,24 @@ namespace Survivor
             EnemyPosition[enemyIndex] = p + dir * EnemyVelocity[EnemyType[enemyIndex]] * Dt;
         }
     }
+
+    [BurstCompile]
+    public struct CheckOutOfBoundsJob : IJob
+    {
+        [ReadOnly] public NativeArray<int> AliveEnemyIndices;
+        [ReadOnly] public NativeArray<float2> EnemyPosition;
+        public int AliveEnemyCount;
+        public float DistanceSqrLimit;
+        public NativeList<int> RemovedEnemies;
+
+        public void Execute()
+        {
+            for (int i = 0; i < AliveEnemyCount; i++)
+            {
+                int idx = AliveEnemyIndices[i];
+                if (math.lengthsq(EnemyPosition[idx]) > DistanceSqrLimit)
+                    RemovedEnemies.Add(idx);
+            }
+        }
+    }
 }

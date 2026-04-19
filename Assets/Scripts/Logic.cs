@@ -96,19 +96,6 @@ namespace Survivor
             return enemyType;
         }
 
-        static void removeEnemy(GameData gameData, int enemyIndex, NativeList<int> removedEnemyIndices)
-        {
-            Debug.LogFormat("Removing enemy {0}", enemyIndex);
-            int count = 0;
-            for (int i = 0; i < gameData.AliveEnemyCount; i++)
-                if (gameData.AliveEnemyIndices[i] != enemyIndex)
-                    gameData.AliveEnemyIndices[count++] = gameData.AliveEnemyIndices[i];
-            gameData.AliveEnemyCount = count;
-
-            gameData.DeadEnemyIndices[gameData.DeadEnemyCount++] = enemyIndex;
-            removedEnemyIndices.Add(enemyIndex);
-        }
-
         private const double DegToRad = Math.PI / 180.0d;
 
         public static float2 RotateVector(float2 a, float degrees)
@@ -148,7 +135,27 @@ namespace Survivor
                 Dt = dt,
             }.Schedule(gameData.AliveEnemyCount, 32).Complete();
 
-            checkEnemyOutOfBounds(gameData, balance, removedEnemyIndices);
+            new CheckOutOfBoundsJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                EnemyPosition = gameData.EnemyPosition,
+                AliveEnemyCount = gameData.AliveEnemyCount,
+                DistanceSqrLimit = balance.SpawnRadius * balance.SpawnRadius * 1.1f,
+                RemovedEnemies = removedEnemyIndices,
+            }.Schedule().Complete();
+
+            // Main-thread: fold the removed indices into AliveEnemyIndices / DeadEnemyIndices.
+            for (int ri = 0; ri < removedEnemyIndices.Length; ri++)
+            {
+                int enemyIndex = removedEnemyIndices[ri];
+                Debug.LogFormat("Removing enemy {0}", enemyIndex);
+                int count = 0;
+                for (int i = 0; i < gameData.AliveEnemyCount; i++)
+                    if (gameData.AliveEnemyIndices[i] != enemyIndex)
+                        gameData.AliveEnemyIndices[count++] = gameData.AliveEnemyIndices[i];
+                gameData.AliveEnemyCount = count;
+                gameData.DeadEnemyIndices[gameData.DeadEnemyCount++] = enemyIndex;
+            }
 
             doEemyToEnemyCollision(gameData, balance);
 
@@ -178,17 +185,6 @@ namespace Survivor
                         gameData.EnemyPosition[enemyIndex2] = midPoint - diffNormalized * halfTotalRadius;
                     }
                 }
-            }
-        }
-
-        static void checkEnemyOutOfBounds(GameData gameData, Balance balance, NativeList<int> removedEnemyIndices)
-        {
-            float distanceSqr = balance.SpawnRadius * balance.SpawnRadius * 1.1f;
-            for (int i = 0; i < gameData.AliveEnemyCount; i++)
-            {
-                int enemyIndex = gameData.AliveEnemyIndices[i];
-                if (math.lengthsq(gameData.EnemyPosition[enemyIndex]) > distanceSqr)
-                    removeEnemy(gameData, enemyIndex, removedEnemyIndices);
             }
         }
 
