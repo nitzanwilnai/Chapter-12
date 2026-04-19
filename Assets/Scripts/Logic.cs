@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace Survivor
@@ -138,7 +139,14 @@ namespace Survivor
                     spawnEnemy(gameData, balance, addedEnemyIndices);
             }
 
-            moveEnemies(gameData, balance, dt);
+            new MoveEnemiesJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                EnemyType = gameData.EnemyType,
+                EnemyVelocity = balance.EnemyVelocity,
+                EnemyPosition = gameData.EnemyPosition,
+                Dt = dt,
+            }.Schedule(gameData.AliveEnemyCount, 32).Complete();
 
             checkEnemyOutOfBounds(gameData, balance, removedEnemyIndices);
 
@@ -147,17 +155,6 @@ namespace Survivor
             movePlayer(gameData, balance, dt);
 
             gameOver = false;
-        }
-
-        static void moveEnemies(GameData gameData, Balance balance, float dt)
-        {
-            for (int i = 0; i < gameData.AliveEnemyCount; i++)
-            {
-                int enemyIndex = gameData.AliveEnemyIndices[i];
-                float2 dir = -math.normalizesafe(gameData.EnemyPosition[enemyIndex]);
-                int enemyType = gameData.EnemyType[enemyIndex];
-                gameData.EnemyPosition[enemyIndex] = gameData.EnemyPosition[enemyIndex] + dir * balance.EnemyVelocity[enemyType] * dt;
-            }
         }
 
         static void doEemyToEnemyCollision(GameData gameData, Balance balance)
