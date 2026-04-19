@@ -114,6 +114,10 @@ namespace Survivor
                         uint rngState = br.ReadUInt32();
                         gameData.Rng = new Unity.Mathematics.Random { state = rngState };
                     }
+                    else
+                    {
+                        gameData.Rng = new Unity.Mathematics.Random((uint)System.DateTime.Now.Ticks | 1u);
+                    }
                 }
             }
         }
