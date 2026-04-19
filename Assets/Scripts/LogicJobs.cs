@@ -42,4 +42,55 @@ namespace Survivor
             }
         }
     }
+
+    [BurstCompile]
+    public struct ComputeCollisionDisplacementJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<int> AliveEnemyIndices;
+        [ReadOnly] public NativeArray<float2> EnemyPosition;
+        [ReadOnly] public NativeArray<int> EnemyType;
+        [ReadOnly] public NativeArray<float> EnemyRadius;
+        public int AliveEnemyCount;
+        public NativeArray<float2> Displacement;
+
+        public void Execute(int i)
+        {
+            int idx_i = AliveEnemyIndices[i];
+            float2 p_i = EnemyPosition[idx_i];
+            float r_i = EnemyRadius[EnemyType[idx_i]];
+            float2 accum = float2.zero;
+
+            for (int j = 0; j < AliveEnemyCount; j++)
+            {
+                if (j == i) continue;
+                int idx_j = AliveEnemyIndices[j];
+                float2 p_j = EnemyPosition[idx_j];
+                float r_j = EnemyRadius[EnemyType[idx_j]];
+                float2 diff = p_i - p_j;
+                float totalR = r_i + r_j;
+                if (math.lengthsq(diff) <= totalR * totalR)
+                {
+                    float len = math.length(diff);
+                    float2 dir = len > 0f ? diff / len : new float2(1f, 0f);
+                    float overlap = totalR - len;
+                    accum += dir * overlap * 0.5f;
+                }
+            }
+
+            Displacement[i] = accum;
+        }
+    }
+
+    [BurstCompile]
+    public struct ApplyCollisionDisplacementJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<int> AliveEnemyIndices;
+        [ReadOnly] public NativeArray<float2> Displacement;
+        [NativeDisableParallelForRestriction] public NativeArray<float2> EnemyPosition;
+
+        public void Execute(int i)
+        {
+            EnemyPosition[AliveEnemyIndices[i]] += Displacement[i];
+        }
+    }
 }

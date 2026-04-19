@@ -157,35 +157,31 @@ namespace Survivor
                 gameData.DeadEnemyIndices[gameData.DeadEnemyCount++] = enemyIndex;
             }
 
-            doEemyToEnemyCollision(gameData, balance);
+            int aliveCount = gameData.AliveEnemyCount;
+            var displacement = new NativeArray<float2>(aliveCount, Allocator.TempJob);
+
+            new ComputeCollisionDisplacementJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                EnemyPosition = gameData.EnemyPosition,
+                EnemyType = gameData.EnemyType,
+                EnemyRadius = balance.EnemyRadius,
+                AliveEnemyCount = aliveCount,
+                Displacement = displacement,
+            }.Schedule(aliveCount, 32).Complete();
+
+            new ApplyCollisionDisplacementJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                Displacement = displacement,
+                EnemyPosition = gameData.EnemyPosition,
+            }.Schedule(aliveCount, 32).Complete();
+
+            displacement.Dispose();
 
             movePlayer(gameData, balance, dt);
 
             gameOver = false;
-        }
-
-        static void doEemyToEnemyCollision(GameData gameData, Balance balance)
-        {
-            for (int i = 0; i < gameData.AliveEnemyCount; i++)
-            {
-                int enemyIndex1 = gameData.AliveEnemyIndices[i];
-                float radius1 = balance.EnemyRadius[gameData.EnemyType[enemyIndex1]];
-                for (int j = i + 1; j < gameData.AliveEnemyCount; j++)
-                {
-                    int enemyIndex2 = gameData.AliveEnemyIndices[j];
-                    float2 diff = gameData.EnemyPosition[enemyIndex1] - gameData.EnemyPosition[enemyIndex2];
-                    float distance = radius1 + balance.EnemyRadius[gameData.EnemyType[enemyIndex2]];
-                    float distanceSqr = distance * distance;
-                    if (math.lengthsq(diff) <= distanceSqr)
-                    {
-                        float2 diffNormalized = math.normalizesafe(diff);
-                        float2 midPoint = (gameData.EnemyPosition[enemyIndex1] + gameData.EnemyPosition[enemyIndex2]) / 2.0f;
-                        float halfTotalRadius = (balance.EnemyRadius[gameData.EnemyType[enemyIndex1]] + balance.EnemyRadius[gameData.EnemyType[enemyIndex2]]) / 2.0f;
-                        gameData.EnemyPosition[enemyIndex1] = midPoint + diffNormalized * halfTotalRadius;
-                        gameData.EnemyPosition[enemyIndex2] = midPoint - diffNormalized * halfTotalRadius;
-                    }
-                }
-            }
         }
 
         static void movePlayer(GameData gameData, Balance balance, float dt)
