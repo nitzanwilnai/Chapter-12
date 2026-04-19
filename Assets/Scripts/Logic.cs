@@ -52,11 +52,11 @@ namespace Survivor
             return gameData.DeadEnemyCount > 0 && gameData.AliveEnemyCount < balance.MaxEnemies;
         }
 
-        static void spawnEnemy(GameData gameData, Balance balance, Span<int> addedEnemyIndices, ref int addedEnemyCount)
+        static void spawnEnemy(GameData gameData, Balance balance, NativeList<int> addedEnemyIndices)
         {
             int enemyIndex = gameData.DeadEnemyIndices[--gameData.DeadEnemyCount];
             gameData.AliveEnemyIndices[gameData.AliveEnemyCount++] = enemyIndex;
-            addedEnemyIndices[addedEnemyCount++] = enemyIndex;
+            addedEnemyIndices.Add(enemyIndex);
 
             float2 direction = gameData.PlayerDirection;
             float angle = gameData.Rng.NextFloat() * 180.0f - 90.0f;
@@ -95,7 +95,7 @@ namespace Survivor
             return enemyType;
         }
 
-        static void removeEnemy(GameData gameData, int enemyIndex, Span<int> removedEnemyIndices, ref int removedEnemyCount)
+        static void removeEnemy(GameData gameData, int enemyIndex, NativeList<int> removedEnemyIndices)
         {
             Debug.LogFormat("Removing enemy {0}", enemyIndex);
             int count = 0;
@@ -105,7 +105,7 @@ namespace Survivor
             gameData.AliveEnemyCount = count;
 
             gameData.DeadEnemyIndices[gameData.DeadEnemyCount++] = enemyIndex;
-            removedEnemyIndices[removedEnemyCount++] = enemyIndex;
+            removedEnemyIndices.Add(enemyIndex);
         }
 
         private const double DegToRad = Math.PI / 180.0d;
@@ -124,10 +124,8 @@ namespace Survivor
             Balance balance,
             float dt,
             out bool gameOver,
-            Span<int> addedEnemyIndices,
-            ref int addedEnemyCount,
-            Span<int> removedEnemyIndices,
-            ref int removedEnemyCount
+            NativeList<int> addedEnemyIndices,
+            NativeList<int> removedEnemyIndices
             )
         {
             gameData.GameTime += dt;
@@ -137,12 +135,12 @@ namespace Survivor
             {
                 gameData.SpawnTime -= balance.SpawnTime;
                 if (canSpawnEnemy(gameData, balance))
-                    spawnEnemy(gameData, balance, addedEnemyIndices, ref addedEnemyCount);
+                    spawnEnemy(gameData, balance, addedEnemyIndices);
             }
 
             moveEnemies(gameData, balance, dt);
 
-            checkEnemyOutOfBounds(gameData, balance, removedEnemyIndices, ref removedEnemyCount);
+            checkEnemyOutOfBounds(gameData, balance, removedEnemyIndices);
 
             doEemyToEnemyCollision(gameData, balance);
 
@@ -186,14 +184,14 @@ namespace Survivor
             }
         }
 
-        static void checkEnemyOutOfBounds(GameData gameData, Balance balance, Span<int> removedEnemyIndices, ref int removedEnemyCount)
+        static void checkEnemyOutOfBounds(GameData gameData, Balance balance, NativeList<int> removedEnemyIndices)
         {
             float distanceSqr = balance.SpawnRadius * balance.SpawnRadius * 1.1f;
             for (int i = 0; i < gameData.AliveEnemyCount; i++)
             {
                 int enemyIndex = gameData.AliveEnemyIndices[i];
                 if (math.lengthsq(gameData.EnemyPosition[enemyIndex]) > distanceSqr)
-                    removeEnemy(gameData, enemyIndex, removedEnemyIndices, ref removedEnemyCount);
+                    removeEnemy(gameData, enemyIndex, removedEnemyIndices);
             }
         }
 

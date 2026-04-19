@@ -2,6 +2,7 @@ using System;
 using CommonTools;
 using TMPro;
 using UnityEngine;
+using Unity.Collections;
 using Unity.Mathematics;
 
 namespace Survivor
@@ -124,10 +125,9 @@ namespace Survivor
             handleInput();
 
             bool isGameOver;
-            Span<int> removedEnemyIndices = stackalloc int[balance.MaxEnemies];
-            int removedEnemyCount = 0;
-            Span<int> addedEnemyIndices = stackalloc int[balance.MaxEnemies];
-            int addedEnemyCount = 0;
+            var removedEnemyIndices = new NativeList<int>(balance.MaxEnemies, Allocator.TempJob);
+            var addedEnemyIndices = new NativeList<int>(balance.MaxEnemies, Allocator.TempJob);
+
             Logic.Tick(
                 metaData,
                 gameData,
@@ -135,14 +135,12 @@ namespace Survivor
                 dt,
                 out isGameOver,
                 addedEnemyIndices,
-                ref addedEnemyCount,
-                removedEnemyIndices,
-                ref removedEnemyCount
+                removedEnemyIndices
                 );
 
-            for (int i = 0; i < addedEnemyCount; i++)
+            for (int i = 0; i < addedEnemyIndices.Length; i++)
             {
-                int enemyIndex = addedEnemyIndices[i]; // This is the index in the gameData arrays, not the enemy pool index
+                int enemyIndex = addedEnemyIndices[i];
                 int enemyType = gameData.EnemyType[enemyIndex];
 
                 int poolIndex = getFreeEnemyPoolIndex(enemyType);
@@ -150,7 +148,7 @@ namespace Survivor
                 m_enemyToPoolIndex[enemyIndex] = poolIndex;
             }
 
-            for (int i = 0; i < removedEnemyCount; i++)
+            for (int i = 0; i < removedEnemyIndices.Length; i++)
             {
                 int enemyIndex = removedEnemyIndices[i];
                 int poolIndex = m_enemyToPoolIndex[enemyIndex];
@@ -168,6 +166,9 @@ namespace Survivor
             }
 
             m_boardGUI.GameTimeText.text = CommonVisual.GetTimeElapsedString(gameData.GameTime);
+
+            addedEnemyIndices.Dispose();
+            removedEnemyIndices.Dispose();
 
             if (isGameOver)
                 gameOver();
