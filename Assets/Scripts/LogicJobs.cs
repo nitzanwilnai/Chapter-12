@@ -93,4 +93,17 @@ namespace Survivor
             EnemyPosition[AliveEnemyIndices[i]] += Displacement[i];
         }
     }
+
+    [BurstCompile]
+    public struct MovePlayerJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<int> AliveEnemyIndices;
+        [NativeDisableParallelForRestriction] public NativeArray<float2> EnemyPosition;
+        public float2 PlayerOffset;
+
+        public void Execute(int i)
+        {
+            EnemyPosition[AliveEnemyIndices[i]] -= PlayerOffset;
+        }
+    }
 }

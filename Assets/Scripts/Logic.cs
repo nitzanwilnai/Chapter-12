@@ -179,19 +179,15 @@ namespace Survivor
 
             displacement.Dispose();
 
-            movePlayer(gameData, balance, dt);
+            float2 playerOffset = gameData.PlayerDirection * balance.PlayerVelocity * dt;
+            new MovePlayerJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                EnemyPosition = gameData.EnemyPosition,
+                PlayerOffset = playerOffset,
+            }.Schedule(gameData.AliveEnemyCount, 32).Complete();
 
             gameOver = false;
-        }
-
-        static void movePlayer(GameData gameData, Balance balance, float dt)
-        {
-            float2 playerPosition = gameData.PlayerDirection * balance.PlayerVelocity * dt;
-            for (int i = 0; i < gameData.AliveEnemyCount; i++)
-            {
-                int enemyIndex = gameData.AliveEnemyIndices[i];
-                gameData.EnemyPosition[enemyIndex] -= playerPosition;
-            }
         }
 
         public static void MouseMove(GameData gameData, Vector2 mouseDownPos, Vector2 mouseCurrentPos)
