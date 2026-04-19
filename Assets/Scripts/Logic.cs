@@ -126,23 +126,57 @@ namespace Survivor
                     spawnEnemy(gameData, balance, addedEnemyIndices);
             }
 
-            new MoveEnemiesJob
+            int aliveCount = gameData.AliveEnemyCount;
+            float2 playerOffset = gameData.PlayerDirection * balance.PlayerVelocity * dt;
+            float distanceSqrLimit = balance.SpawnRadius * balance.SpawnRadius * 1.1f;
+            var displacement = new NativeArray<float2>(aliveCount, Allocator.TempJob);
+
+            JobHandle h = default;
+
+            h = new MoveEnemiesJob
             {
                 AliveEnemyIndices = gameData.AliveEnemyIndices,
                 EnemyType = gameData.EnemyType,
                 EnemyVelocity = balance.EnemyVelocity,
                 EnemyPosition = gameData.EnemyPosition,
                 Dt = dt,
-            }.Schedule(gameData.AliveEnemyCount, 32).Complete();
+            }.Schedule(aliveCount, 32, h);
 
-            new CheckOutOfBoundsJob
+            h = new CheckOutOfBoundsJob
             {
                 AliveEnemyIndices = gameData.AliveEnemyIndices,
                 EnemyPosition = gameData.EnemyPosition,
-                AliveEnemyCount = gameData.AliveEnemyCount,
-                DistanceSqrLimit = balance.SpawnRadius * balance.SpawnRadius * 1.1f,
+                AliveEnemyCount = aliveCount,
+                DistanceSqrLimit = distanceSqrLimit,
                 RemovedEnemies = removedEnemyIndices,
-            }.Schedule().Complete();
+            }.Schedule(h);
+
+            h = new ComputeCollisionDisplacementJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                EnemyPosition = gameData.EnemyPosition,
+                EnemyType = gameData.EnemyType,
+                EnemyRadius = balance.EnemyRadius,
+                AliveEnemyCount = aliveCount,
+                Displacement = displacement,
+            }.Schedule(aliveCount, 32, h);
+
+            h = new ApplyCollisionDisplacementJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                Displacement = displacement,
+                EnemyPosition = gameData.EnemyPosition,
+            }.Schedule(aliveCount, 32, h);
+
+            h = new MovePlayerJob
+            {
+                AliveEnemyIndices = gameData.AliveEnemyIndices,
+                EnemyPosition = gameData.EnemyPosition,
+                PlayerOffset = playerOffset,
+            }.Schedule(aliveCount, 32, h);
+
+            h.Complete();
+            displacement.Dispose();
 
             // Main-thread: fold the removed indices into AliveEnemyIndices / DeadEnemyIndices.
             for (int ri = 0; ri < removedEnemyIndices.Length; ri++)
@@ -156,36 +190,6 @@ namespace Survivor
                 gameData.AliveEnemyCount = count;
                 gameData.DeadEnemyIndices[gameData.DeadEnemyCount++] = enemyIndex;
             }
-
-            int aliveCount = gameData.AliveEnemyCount;
-            var displacement = new NativeArray<float2>(aliveCount, Allocator.TempJob);
-
-            new ComputeCollisionDisplacementJob
-            {
-                AliveEnemyIndices = gameData.AliveEnemyIndices,
-                EnemyPosition = gameData.EnemyPosition,
-                EnemyType = gameData.EnemyType,
-                EnemyRadius = balance.EnemyRadius,
-                AliveEnemyCount = aliveCount,
-                Displacement = displacement,
-            }.Schedule(aliveCount, 32).Complete();
-
-            new ApplyCollisionDisplacementJob
-            {
-                AliveEnemyIndices = gameData.AliveEnemyIndices,
-                Displacement = displacement,
-                EnemyPosition = gameData.EnemyPosition,
-            }.Schedule(aliveCount, 32).Complete();
-
-            displacement.Dispose();
-
-            float2 playerOffset = gameData.PlayerDirection * balance.PlayerVelocity * dt;
-            new MovePlayerJob
-            {
-                AliveEnemyIndices = gameData.AliveEnemyIndices,
-                EnemyPosition = gameData.EnemyPosition,
-                PlayerOffset = playerOffset,
-            }.Schedule(gameData.AliveEnemyCount, 32).Complete();
 
             gameOver = false;
         }
