@@ -34,6 +34,8 @@ namespace Survivor
         {
             gameData.InGame = true;
 
+            gameData.Rng = new Unity.Mathematics.Random((uint)DateTime.Now.Ticks | 1u);
+
             gameData.GameTime = 0.0f;
             gameData.SpawnTime = 0.0f;
 
@@ -57,18 +59,18 @@ namespace Survivor
             addedEnemyIndices[addedEnemyCount++] = enemyIndex;
 
             float2 direction = gameData.PlayerDirection;
-            float angle = UnityEngine.Random.value * 180.0f - 90.0f;
+            float angle = gameData.Rng.NextFloat() * 180.0f - 90.0f;
             if (math.lengthsq(direction) == 0.0f)
             {
                 direction = new float2(0.0f, 1.0f);
-                angle = UnityEngine.Random.value * 360.0f;
+                angle = gameData.Rng.NextFloat() * 360.0f;
             }
             direction = RotateVector(direction, angle);
             gameData.EnemyPosition[enemyIndex] = math.normalizesafe(direction) * balance.SpawnRadius;
-            gameData.EnemyType[enemyIndex] = getRandomEnemyTypeByWeight(balance);
+            gameData.EnemyType[enemyIndex] = getRandomEnemyTypeByWeight(gameData, balance);
         }
 
-        private static int getRandomEnemyTypeByWeight(Balance balance)
+        private static int getRandomEnemyTypeByWeight(GameData gameData, Balance balance)
         {
             int enemyType = 0;
             int totalWeight = 0;
@@ -77,7 +79,7 @@ namespace Survivor
                 totalWeight += balance.SpawnDataWeight[spawnIdx];
             }
 
-            int randomWeight = UnityEngine.Random.Range(0, totalWeight);
+            int randomWeight = gameData.Rng.NextInt(0, totalWeight);
 
             totalWeight = 0;
             for (int spawnIdx = 0; spawnIdx < balance.SpawnDataID.Length; spawnIdx++)

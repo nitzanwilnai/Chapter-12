@@ -18,7 +18,7 @@ namespace Survivor
             using (FileStream fs = File.Create(fileName))
             using (BinaryWriter bw = new BinaryWriter(fs))
             {
-                int version = 1;
+                int version = 2;
                 bw.Write(version);
 
                 bw.Write(gameData.InGame);
@@ -50,6 +50,8 @@ namespace Survivor
                 bw.Write(balance.NumEnemyTypes);
                 for (int enemyType = 0; enemyType < balance.NumEnemyTypes; enemyType++)
                     bw.Write(balance.EnemyIDToName[enemyType]);
+
+                bw.Write(gameData.Rng.state);
             }
         }
 
@@ -105,6 +107,12 @@ namespace Survivor
                                 }
                             }
                         }
+                    }
+
+                    if (version >= 2)
+                    {
+                        uint rngState = br.ReadUInt32();
+                        gameData.Rng = new Unity.Mathematics.Random { state = rngState };
                     }
                 }
             }
