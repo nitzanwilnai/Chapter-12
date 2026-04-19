@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
@@ -6,7 +5,6 @@ using Unity.Collections;
 
 namespace Survivor
 {
-    [Serializable]
     public class Balance
     {
         public int MaxEnemies;
