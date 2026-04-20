@@ -172,9 +172,13 @@ namespace Survivor
             {
                 int enemyIndex = gameData.AliveEnemyIndices[i];
                 int poolIndex = m_enemyToPoolIndex[enemyIndex];
-                float2 pos = gameData.EnemyPosition[enemyIndex];
-                m_enemyPool[poolIndex].transform.localPosition = new Vector3(pos.x, pos.y, 0f);
+                m_poolPositions[poolIndex] = gameData.EnemyPosition[enemyIndex];
             }
+
+            new UpdateEnemyTransformsJob
+            {
+                PoolPositions = m_poolPositions,
+            }.Schedule(m_transforms).Complete();
 
             m_boardGUI.GameTimeText.text = CommonVisual.GetTimeElapsedString(gameData.GameTime);
 
@@ -293,6 +297,18 @@ mousePosition = Input.GetTouch(0).position;
         {
             if (m_transforms.isCreated) m_transforms.Dispose();
             if (m_poolPositions.IsCreated) m_poolPositions.Dispose();
+        }
+    }
+
+    [BurstCompile]
+    public struct UpdateEnemyTransformsJob : IJobParallelForTransform
+    {
+        [ReadOnly] public NativeArray<float2> PoolPositions;
+
+        public void Execute(int i, TransformAccess transform)
+        {
+            float2 p = PoolPositions[i];
+            transform.localPosition = new Vector3(p.x, p.y, 0f);
         }
     }
 }
