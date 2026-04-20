@@ -2,8 +2,10 @@ using System;
 using CommonTools;
 using TMPro;
 using UnityEngine;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
+using UnityEngine.Jobs;
 
 namespace Survivor
 {
@@ -25,6 +27,8 @@ namespace Survivor
         int m_enemyPoolUnusedIndicesCount;
         int[] m_enemyToPoolIndex;
         int m_enemyPoolCount;
+        TransformAccessArray m_transforms;
+        NativeArray<float2> m_poolPositions;
 
         Camera m_mainCamera;
         Vector2 m_mouseDownPos;
@@ -54,6 +58,9 @@ namespace Survivor
             m_enemyToPoolIndex = new int[MaxEnemyPoolSize];
             m_enemyPoolUnusedIndices = new int[MaxEnemyPoolSize];
             m_enemyPoolUnusedIndicesCount = 0;
+
+            m_poolPositions = new NativeArray<float2>(MaxEnemyPoolSize, Allocator.Persistent);
+            m_transforms = new TransformAccessArray(MaxEnemyPoolSize);
 
             m_boardGUI = new BoardGUI();
             m_boardGUI.UI = AssetManager.Instance.GetInGameUI();
@@ -100,6 +107,9 @@ namespace Survivor
 
         public void Hide()
         {
+            if (m_transforms.isCreated) m_transforms.Dispose();
+            m_transforms = new TransformAccessArray(MaxEnemyPoolSize);
+
             for (int enemyIdx = 0; enemyIdx < m_enemyPoolCount; enemyIdx++)
             {
                 Debug.Log("HIDE() m_enemyPool[" + enemyIdx + "] " + m_enemyPool[enemyIdx].name);
@@ -214,6 +224,7 @@ namespace Survivor
                 Debug.Log("m_enemyPool[" + m_enemyPoolCount + "] " + m_enemyPool[m_enemyPoolCount].name);
 
                 m_enemyPoolType[m_enemyPoolCount] = enemyType;
+                m_transforms.Add(m_enemyPool[m_enemyPoolCount].transform);
                 m_enemyPoolCount++;
                 return m_enemyPoolCount - 1;
             }
@@ -276,6 +287,12 @@ mousePosition = Input.GetTouch(0).position;
             Game.Instance.SetMenuState(MENU_STATE.PAUSE_MENU);
             GameDataIO.Save(gameData, balance);
             MetaDataIO.Save(metaData);
+        }
+
+        void OnDestroy()
+        {
+            if (m_transforms.isCreated) m_transforms.Dispose();
+            if (m_poolPositions.IsCreated) m_poolPositions.Dispose();
         }
     }
 }
