@@ -259,11 +259,11 @@ mousePosition = Input.GetTouch(0).position;
             {
                 InputCircleOut.SetActive(true);
                 m_mouseDownPos = mouseLocalPos;
+                InputCircleOut.transform.position = m_mouseDownPos;
             }
 
             if (mouseMove)
             {
-                InputCircleOut.transform.position = m_mouseDownPos;
                 Vector2 diff = (mouseLocalPos - m_mouseDownPos);
                 float dist = diff.magnitude;
                 if (dist > 1.0f)

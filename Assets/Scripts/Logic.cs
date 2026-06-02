@@ -190,7 +190,7 @@ namespace Survivor
                 gameData.DeadEnemyIndices[gameData.DeadEnemyCount++] = enemyIndex;
             }
 
-            gameOver = false;
+            gameOver = checkGameOver(metaData, gameData, balance);
         }
 
         public static void MouseMove(GameData gameData, Vector2 mouseDownPos, Vector2 mouseCurrentPos)
